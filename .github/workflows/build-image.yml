@@ -13,7 +13,7 @@ jobs:
         packages: write
 
     env:
-      REPOSITORY: ghcr.io/UKHSA-Internal/devops-terraform-ci
+      REPOSITORY: ghcr.io/ukhsa-internal/devops-terraform-ci
 
     steps:
       - name: Checkout repository

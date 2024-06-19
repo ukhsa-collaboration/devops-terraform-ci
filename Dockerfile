@@ -3,6 +3,7 @@ FROM python:3.12-slim-bookworm
 
 # Use environment variables for versions, making updates easier
 ENV TERRAFORM_VERSION="1.8.4"
+ENV TFENV_VERSION="3.0.0"
 ENV TFLINT_VERSION="0.51.1"
 ENV TFDOCS_VERSION="0.18.0"
 ENV CHECKOV_VERSION="3.2.125"
@@ -13,14 +14,21 @@ RUN apt-get update && \
         git \
         wget \
         unzip \
+        curl \
+        gnupg \
         ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Download and install specified Terraform version
-RUN wget -O /tmp/terraform.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" && \
-    unzip /tmp/terraform.zip -d /usr/local/bin && \
-    rm /tmp/terraform.zip
+# Upgrade pip to ensure the latest version is used
+RUN pip3 install --upgrade pip
+
+# Install tfenv to manage Terraform versions
+RUN wget -O /tmp/tfenv.zip https://github.com/tfutils/tfenv/archive/refs/tags/v${TFENV_VERSION}.zip && \
+    unzip /tmp/tfenv.zip -d $HOME/.tfenv && \
+    ln -s $HOME/.tfenv/tfenv-${TFENV_VERSION}/bin/* /usr/local/bin && \
+    echo "v${TERRAFORM_VERSION}" > $HOME/.tfenv/tfenv-${TFENV_VERSION}/version && \
+    echo "trust-tfenv: yes" > $HOME/.tfenv/tfenv-${TFENV_VERSION}/use-gpgv
 
 # TFlint
 RUN wget -O /tmp/tflint.zip "https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/tflint_linux_amd64.zip" && \

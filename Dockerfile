@@ -32,7 +32,8 @@ RUN wget -O tfenv.zip https://github.com/tfutils/tfenv/archive/refs/tags/v${TFEN
     rm tfenv.zip && \
     ln -s /root/.tfenv/tfenv-${TFENV_VERSION}/bin/* /usr/local/bin && \
     echo "v${TERRAFORM_VERSION}" > /root/.tfenv/tfenv-${TFENV_VERSION}/version && \
-    echo "trust-tfenv: yes" > /root/.tfenv/tfenv-${TFENV_VERSION}/use-gpgv
+    echo "trust-tfenv: yes" > /root/.tfenv/tfenv-${TFENV_VERSION}/use-gpgv && \
+    tfenv use ${TERRAFORM_VERSION}
 
 # TFlint
 RUN wget -O tflint.zip "https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/tflint_linux_amd64.zip" && \

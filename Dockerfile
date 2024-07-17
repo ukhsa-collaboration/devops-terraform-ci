@@ -7,6 +7,8 @@ ENV TERRAFORM_VERSION="1.8.4"
 ENV TFENV_VERSION="3.0.0"
 ENV TFLINT_VERSION="0.51.1"
 ENV TFDOCS_VERSION="0.18.0"
+ENV TFLINT_AWS_PLUGIN_VERSION="0.32.0"
+ENV TFLINT_AZURERM_PLUGIN_VERSION="0.26.0"
 
 # Set the working directory to /tmp
 WORKDIR /tmp
@@ -40,6 +42,9 @@ RUN wget -O tflint.zip "https://github.com/terraform-linters/tflint/releases/dow
     unzip tflint.zip -d /usr/local/bin && \
     rm tflint.zip
 
+# Copy the .tflint.hcl configuration file
+COPY .tflint.hcl /root/.tflint.hcl
+
 # TFDocs
 RUN wget -O terraform-docs.tar.gz "https://terraform-docs.io/dl/v${TFDOCS_VERSION}/terraform-docs-v${TFDOCS_VERSION}-linux-amd64.tar.gz" && \
     mkdir terraform-docs && \
@@ -49,6 +54,8 @@ RUN wget -O terraform-docs.tar.gz "https://terraform-docs.io/dl/v${TFDOCS_VERSIO
     rm terraform-docs.tar.gz && \
     rm -rf terraform-docs
 
+# Initialize TFLint with the specified plugins
+RUN tflint --init
 
 # Use a slim image for the final image
 FROM python:3.12-slim-bookworm
@@ -63,6 +70,10 @@ RUN apt-get update && \
 
 # Copy the installed binaries from the builder image
 COPY --from=builder /usr/local /usr/local
+
+# Copy the TFLint plugin configuration from the builder image
+COPY --from=builder /root/.tflint.hcl /root/.tflint.hcl 
+COPY --from=builder /root/.tflint.d /root/.tflint.d
 
 # Setup tfenv from the builder image
 COPY --from=builder /root/.tfenv /root/.tfenv

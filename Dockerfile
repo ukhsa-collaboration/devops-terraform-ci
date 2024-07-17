@@ -42,8 +42,8 @@ RUN wget -O tflint.zip "https://github.com/terraform-linters/tflint/releases/dow
     unzip tflint.zip -d /usr/local/bin && \
     rm tflint.zip
 
-# Create the .tflint.hcl file with AWS and Azure plugins
-RUN echo 'plugin "aws" {\n    enabled = true\n    version = "'${TFLINT_AWS_PLUGIN_VERSION}'"\n    source  = "github.com/terraform-linters/tflint-ruleset-aws"\n}\n\nplugin "azurerm" {\n    enabled = true\n    version = "'${TFLINT_AZURERM_PLUGIN_VERSION}'"\n    source  = "github.com/terraform-linters/tflint-ruleset-azurerm"\n}' > /root/.tflint.hcl
+# Copy the .tflint.hcl configuration file
+COPY .tflint.hcl /root/.tflint.hcl
 
 # TFDocs
 RUN wget -O terraform-docs.tar.gz "https://terraform-docs.io/dl/v${TFDOCS_VERSION}/terraform-docs-v${TFDOCS_VERSION}-linux-amd64.tar.gz" && \

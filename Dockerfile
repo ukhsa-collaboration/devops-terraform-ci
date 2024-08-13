@@ -55,7 +55,7 @@ RUN wget -O terraform-docs.tar.gz "https://terraform-docs.io/dl/v${TFDOCS_VERSIO
     rm -rf terraform-docs
 
 # Initialize TFLint with the specified plugins
-RUN tflint --init
+RUN tflint --init --config /root/.tflint.hcl
 
 # Use a slim image for the final image
 FROM python:3.12-slim-bookworm

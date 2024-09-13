@@ -63,6 +63,7 @@ FROM python:3.12-slim-bookworm
 # Applications required just for tools
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        openssh-client \
         unzip \
         git \
         curl && \

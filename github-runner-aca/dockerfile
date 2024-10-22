@@ -71,6 +71,8 @@ RUN apt-get update && \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
 # Upgrade pip and install Checkov
 RUN pip3 install --no-cache-dir --upgrade pip && \
     pip3 install --no-cache-dir checkov==${CHECKOV_VERSION}

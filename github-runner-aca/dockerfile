@@ -1,0 +1,112 @@
+FROM mcr.microsoft.com/azure-powershell:ubuntu-22.04
+
+# To make it easier for build and release pipelines to run apt-get,
+# configure apt to not require confirmation (assume the -y argument by default)
+ENV DEBIAN_FRONTEND=noninteractive
+RUN echo "APT::Get::Assume-Yes \"true\";" > /etc/apt/apt.conf.d/90assumeyes
+
+RUN apt-get update \
+&& apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        jq \
+        git \
+        dumb-init \
+        sudo \
+        iputils-ping \
+        libcurl4 \
+        libunwind8 \
+        netcat \
+        ruby \
+        unzip \
+        dnsutils \
+        nodejs
+
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
+RUN groupadd -g 121 runner \
+  && useradd -mr -d /home/runner -u 1001 -g 121 runner \
+  && usermod -aG sudo runner \
+  && echo '%sudo ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache
+RUN mkdir -p /opt/hostedtoolcache
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+WORKDIR /actions-runner
+COPY install_actions.sh /actions-runner
+
+RUN chmod +x /actions-runner/install_actions.sh \
+  && /actions-runner/install_actions.sh ${GH_RUNNER_VERSION} ${TARGETPLATFORM} \
+  && rm /actions-runner/install_actions.sh \
+  && chown runner /_work /actions-runner /opt/hostedtoolcache
+
+COPY token.sh entrypoint.sh app_token.sh /
+RUN chmod +x /token.sh /entrypoint.sh /app_token.sh
+
+# ------------------------- #
+# Start custom installation #
+# ------------------------- #
+USER root
+# Use environment variables for versions, making updates easier
+ENV CHECKOV_VERSION="3.2.125"
+ENV TERRAFORM_VERSION="1.8.4"
+ENV TFENV_VERSION="3.0.0"
+ENV TFLINT_VERSION="0.51.1"
+ENV TFDOCS_VERSION="0.18.0"
+ENV TFLINT_AWS_PLUGIN_VERSION="0.32.0"
+ENV TFLINT_AZURERM_PLUGIN_VERSION="0.26.0"
+
+# Set the working directory to /tmp
+WORKDIR /tmp
+
+# Update the package lists for upgrades and new packages, install desired packages, and clean up
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        wget \
+        python3 \
+        python3-pip \
+        gnupg \
+        ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip and install Checkov
+RUN pip3 install --no-cache-dir --upgrade pip && \
+    pip3 install --no-cache-dir checkov==${CHECKOV_VERSION}
+
+# Install tfenv to manage Terraform versions
+RUN wget -O tfenv.zip https://github.com/tfutils/tfenv/archive/refs/tags/v${TFENV_VERSION}.zip && \
+    unzip tfenv.zip -d $HOME/.tfenv && \
+    rm tfenv.zip && \
+    ln -s /root/.tfenv/tfenv-${TFENV_VERSION}/bin/* /usr/local/bin && \
+    echo "v${TERRAFORM_VERSION}" > /root/.tfenv/tfenv-${TFENV_VERSION}/version && \
+    echo "trust-tfenv: yes" > /root/.tfenv/tfenv-${TFENV_VERSION}/use-gpgv && \
+    tfenv use ${TERRAFORM_VERSION}
+
+# TFlint
+RUN wget -O tflint.zip "https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/tflint_linux_amd64.zip" && \
+    unzip tflint.zip -d /usr/local/bin && \
+    rm tflint.zip
+
+# Copy the .tflint.hcl configuration file
+COPY .tflint.hcl /root/.tflint.hcl
+
+# TFDocs
+RUN wget -O terraform-docs.tar.gz "https://terraform-docs.io/dl/v${TFDOCS_VERSION}/terraform-docs-v${TFDOCS_VERSION}-linux-amd64.tar.gz" && \
+    mkdir terraform-docs && \
+    tar -xzf terraform-docs.tar.gz -C terraform-docs && \
+    chmod +x terraform-docs/terraform-docs && \
+    mv terraform-docs/terraform-docs /usr/local/bin/terraform-docs && \
+    rm terraform-docs.tar.gz && \
+    rm -rf terraform-docs
+
+# Initialize TFLint with the specified plugins
+RUN tflint --init --config /root/.tflint.hcl
+# ------------------------- #
+# End custom installation   #
+# ------------------------- #
+
+WORKDIR /actions-runner
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["./bin/Runner.Listener", "run", "--startuptype", "service"]

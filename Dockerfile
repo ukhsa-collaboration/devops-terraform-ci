@@ -1,5 +1,5 @@
 # Use a specific version of the base image to ensure builds are reproducible
-FROM python:3.12-slim-bookworm as builder
+FROM python:3.14.2-slim-bookworm as builder
 
 # Use environment variables for versions, making updates easier
 ENV CHECKOV_VERSION="3.2.125"
@@ -58,7 +58,7 @@ RUN wget -O terraform-docs.tar.gz "https://terraform-docs.io/dl/v${TFDOCS_VERSIO
 RUN tflint --init --config /root/.tflint.hcl
 
 # Use a slim image for the final image
-FROM python:3.12-slim-bookworm
+FROM python:3.14.2-slim-bookworm
 
 # Applications required just for tools
 RUN apt-get update && \
